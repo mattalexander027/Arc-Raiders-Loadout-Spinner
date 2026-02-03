@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARC Raiders Loadout Spinner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --neon-orange: #ff6b35;
+            --neon-cyan: #00f5ff;
+            --neon-pink: #ff2d95;
+            --neon-yellow: #ffd93d;
+            --neon-green: #39ff14;
+            --dark-bg: #0a0a0f;
+            --card-bg: rgba(20, 20, 30, 0.9);
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+        }
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--dark-bg);
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: var(--text-primary);
+        }
+
+        .bg-effects { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; }
+        .bg-effects::before {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle at 20% 80%, rgba(255,107,53,0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0,245,255,0.15) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(255,45,149,0.1) 0%, transparent 60%);
+            animation: bgPulse 8s ease-in-out infinite;
+        }
+        @keyframes bgPulse { 0%,100%{transform:scale(1) rotate(0deg)} 50%{transform:scale(1.1) rotate(5deg)} }
+        .grid-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(0,245,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,245,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px; animation: gridMove 20s linear infinite;
+        }
+        @keyframes gridMove { 0%{transform:translate(0,0)} 100%{transform:translate(50px,50px)} }
+
+        header { text-align: center; padding: 2rem 1rem; }
+        .logo {
+            font-family: 'Orbitron', sans-serif; font-size: clamp(2rem,6vw,4rem);
+            font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em;
+            background: linear-gradient(135deg, var(--neon-orange), var(--neon-pink), var(--neon-cyan));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            animation: logoGlow 2s ease-in-out infinite alternate;
+        }
+        @keyframes logoGlow { 0%{filter:drop-shadow(0 0 20px rgba(255,107,53,0.5))} 100%{filter:drop-shadow(0 0 40px rgba(0,245,255,0.5))} }
+        .subtitle { font-family:'Orbitron',sans-serif; font-size:clamp(0.8rem,2vw,1.2rem); color:var(--text-secondary); letter-spacing:0.3em; margin-top:0.5rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 1rem; }
+
+        .controls { display:flex; justify-content:center; gap:2rem; flex-wrap:wrap; margin-bottom:2rem; }
+        .chaos-toggle { display:flex; align-items:center; gap:1rem; background:var(--card-bg); padding:1rem 2rem; border-radius:50px; border:2px solid rgba(255,45,149,0.3); cursor:pointer; transition:all 0.3s ease; }
+        .chaos-toggle:hover { border-color:var(--neon-pink); box-shadow:0 0 30px rgba(255,45,149,0.3); }
+        .chaos-toggle input { display:none; }
+        .chaos-toggle .toggle-track { width:60px; height:30px; background:#1a1a2e; border-radius:15px; position:relative; transition:all 0.3s ease; }
+        .chaos-toggle input:checked + .toggle-track { background:linear-gradient(90deg,var(--neon-pink),var(--neon-orange)); }
+        .chaos-toggle .toggle-thumb { width:24px; height:24px; background:white; border-radius:50%; position:absolute; top:3px; left:3px; transition:all 0.3s ease; }
+        .chaos-toggle input:checked + .toggle-track .toggle-thumb { transform:translateX(30px); }
+        .chaos-label { font-family:'Orbitron',sans-serif; font-size:1rem; font-weight:600; color:var(--neon-pink); text-transform:uppercase; letter-spacing:0.1em; }
+        .reroll-counter { display:flex; align-items:center; gap:0.5rem; background:var(--card-bg); padding:1rem 2rem; border-radius:50px; border:2px solid rgba(0,245,255,0.3); }
+        .reroll-label { font-family:'Orbitron',sans-serif; font-size:0.9rem; color:var(--text-secondary); }
+        .reroll-dots { display:flex; gap:0.5rem; }
+        .reroll-dot { width:20px; height:20px; border-radius:50%; background:#1a1a2e; border:2px solid var(--neon-cyan); transition:all 0.3s ease; }
+        .reroll-dot.active { background:var(--neon-cyan); box-shadow:0 0 15px var(--neon-cyan); }
+        .reroll-dot.used { background:#333; border-color:#333; }
+
+        .spin-section { text-align:center; margin-bottom:2rem; }
+        .spin-btn {
+            font-family:'Orbitron',sans-serif; font-size:clamp(1.5rem,4vw,2.5rem); font-weight:800;
+            padding:1.5rem 4rem; background:linear-gradient(135deg,var(--neon-orange),var(--neon-pink));
+            border:none; border-radius:60px; color:white; cursor:pointer; text-transform:uppercase;
+            letter-spacing:0.15em; position:relative; overflow:hidden; transition:all 0.3s ease;
+            box-shadow:0 0 30px rgba(255,107,53,0.5), 0 10px 40px rgba(255,45,149,0.3);
+        }
+        .spin-btn::before { content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent); transition:left 0.5s ease; }
+        .spin-btn:hover::before { left:100%; }
+        .spin-btn:hover { transform:scale(1.05); box-shadow:0 0 50px rgba(255,107,53,0.7), 0 15px 60px rgba(255,45,149,0.5); }
+        .spin-btn:active { transform:scale(0.98); }
+        .spin-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+        .spin-btn.spinning { animation:btnPulse 0.5s ease-in-out infinite; }
+        @keyframes btnPulse { 0%,100%{box-shadow:0 0 30px rgba(255,107,53,0.5)} 50%{box-shadow:0 0 60px rgba(255,107,53,0.8)} }
+
+        .final-warning { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:none; justify-content:center; align-items:center; z-index:1000; animation:flashBg 0.3s ease-in-out infinite; }
+        .final-warning.show { display:flex; }
+        @keyframes flashBg { 0%,100%{background:rgba(255,0,0,0.3)} 50%{background:rgba(0,0,0,0.9)} }
+        .final-warning-text { font-family:'Orbitron',sans-serif; font-size:clamp(3rem,10vw,8rem); font-weight:900; color:var(--neon-orange); text-transform:uppercase; animation:warningPulse 0.3s ease-in-out infinite alternate; text-shadow:0 0 20px var(--neon-orange), 0 0 40px var(--neon-orange), 0 0 80px var(--neon-orange); }
+        @keyframes warningPulse { 0%{transform:scale(1)} 100%{transform:scale(1.1)} }
+
+        /* Wheel Section - Canvas Based */
+        .wheel-section { display:flex; justify-content:center; align-items:center; margin-bottom:3rem; min-height:520px; position:relative; }
+        .wheel-container { position:relative; width:min(85vw, 500px); height:min(85vw, 500px); }
+        .wheel-wrapper {
+            width:100%; height:100%;
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        }
+        .wheel-canvas {
+            width:100%; height:100%;
+            border-radius:50%;
+            box-shadow: 0 0 0 8px var(--neon-orange), 0 0 30px rgba(255,107,53,0.5), inset 0 0 20px rgba(0,0,0,0.3);
+            transition:box-shadow 0.3s ease;
+        }
+        .wheel-canvas.spinning {
+            box-shadow: 0 0 0 8px var(--neon-orange), 0 0 50px rgba(255,107,53,0.7), 0 0 100px rgba(0,245,255,0.3), inset 0 0 20px rgba(0,0,0,0.3);
+        }
+        .wheel-pointer {
+            position:absolute; top:-20px; left:50%; transform:translateX(-50%);
+            width:0; height:0;
+            border-left:25px solid transparent; border-right:25px solid transparent;
+            border-top:50px solid var(--neon-cyan);
+            filter:drop-shadow(0 0 10px var(--neon-cyan)); z-index:10;
+        }
+        .wheel-center-dot {
+            position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+            width:50px; height:50px;
+            background:linear-gradient(135deg, var(--neon-orange), var(--neon-pink));
+            border-radius:50%; display:flex; align-items:center; justify-content:center;
+            font-family:'Orbitron',sans-serif; font-size:0.7rem; font-weight:900; color:white;
+            box-shadow:0 0 20px rgba(255,107,53,0.5), 0 0 0 4px rgba(0,0,0,0.5);
+            z-index:5; pointer-events:none;
+        }
+
+        .current-category { text-align:center; margin-bottom:1rem; }
+        .category-label { font-family:'Orbitron',sans-serif; font-size:clamp(1.5rem,4vw,2.5rem); font-weight:700; color:var(--neon-cyan); text-transform:uppercase; letter-spacing:0.1em; text-shadow:0 0 20px var(--neon-cyan); opacity:0; transition:opacity 0.3s ease; }
+        .category-label.visible { opacity:1; }
+
+        .loadout-section { background:var(--card-bg); border-radius:20px; padding:2rem; border:2px solid rgba(0,245,255,0.2); box-shadow:0 0 40px rgba(0,0,0,0.5); transition:all 0.6s ease; }
+        .loadout-section.complete { border-color:var(--neon-orange); box-shadow:0 0 40px rgba(255,107,53,0.15), 0 0 80px rgba(255,107,53,0.08); }
+        .loadout-title { font-family:'Orbitron',sans-serif; font-size:1.5rem; font-weight:700; text-align:center; margin-bottom:2rem; color:var(--neon-cyan); text-transform:uppercase; letter-spacing:0.2em; }
+        .loadout-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:1.5rem; }
+        .loadout-slot { background:rgba(10,10,20,0.8); border-radius:15px; padding:1.5rem; border:2px solid rgba(255,255,255,0.1); transition:all 0.3s ease; position:relative; overflow:hidden; }
+        .loadout-slot::before { content:''; position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg,transparent,var(--neon-orange),transparent); opacity:0; transition:opacity 0.3s ease; }
+        .loadout-slot.revealed::before { opacity:1; }
+        .loadout-slot.revealed { border-color:var(--neon-orange); box-shadow:0 0 20px rgba(255,107,53,0.2); animation:slotPop 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes slotPop { 0%{transform:scale(1)} 40%{transform:scale(1.04)} 100%{transform:scale(1)} }
+        .slot-label { font-family:'Orbitron',sans-serif; font-size:0.75rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.15em; margin-bottom:0.5rem; }
+        .slot-value { font-family:'Rajdhani',sans-serif; font-size:1.4rem; font-weight:600; color:var(--text-primary); min-height:2rem; transition:color 0.4s ease; }
+        .slot-value.empty { color:#333; }
+        .slot-value.flash { color:var(--neon-orange); }
+        .quickuse-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:0.5rem; }
+        .quickuse-item { background:rgba(30,30,50,0.5); padding:0.75rem; border-radius:8px; text-align:center; font-size:0.85rem; border:1px solid rgba(255,255,255,0.1); transition:all 0.3s ease; }
+        .quickuse-item.revealed { border-color:var(--neon-orange); background:rgba(255,107,53,0.08); animation:slotPop 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+        .objectives-section { margin-top:2rem; padding-top:2rem; border-top:2px solid rgba(255,255,255,0.1); }
+        .objectives-title { font-family:'Orbitron',sans-serif; font-size:1.2rem; color:var(--neon-yellow); text-transform:uppercase; letter-spacing:0.15em; margin-bottom:1rem; text-align:center; }
+        .objectives-list { display:flex; flex-wrap:wrap; gap:1rem; justify-content:center; }
+        .objective-item { background:linear-gradient(135deg,rgba(255,217,61,0.1),rgba(255,107,53,0.1)); padding:1rem 2rem; border-radius:10px; border:2px solid var(--neon-yellow); font-family:'Rajdhani',sans-serif; font-size:1.2rem; font-weight:600; opacity:0; transform:translateY(20px); transition:all 0.5s ease; }
+        .objective-item.revealed { opacity:1; transform:translateY(0); }
+        .reset-section { text-align:center; margin-top:2rem; }
+        .reset-btn { font-family:'Orbitron',sans-serif; font-size:1rem; padding:1rem 3rem; background:transparent; border:2px solid var(--text-secondary); border-radius:30px; color:var(--text-secondary); cursor:pointer; text-transform:uppercase; letter-spacing:0.1em; transition:all 0.3s ease; }
+        .reset-btn:hover { border-color:var(--neon-cyan); color:var(--neon-cyan); box-shadow:0 0 20px rgba(0,245,255,0.3); }
+        .audio-indicator {
+            position:fixed; bottom:20px; right:20px;
+            font-family:'Orbitron',sans-serif; font-size:1rem; font-weight:600;
+            color:var(--text-primary); background:var(--card-bg);
+            padding:0.75rem 1.5rem; border-radius:50px;
+            border:2px solid rgba(0,245,255,0.3);
+            cursor:pointer; user-select:none;
+            transition:all 0.3s ease; opacity:0.8; z-index:50;
+        }
+        .audio-indicator:hover { border-color:var(--neon-cyan); box-shadow:0 0 15px rgba(0,245,255,0.3); opacity:1; }
+
+        /* Reveal Overlay */
+        .reveal-overlay {
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            display:flex; flex-direction:column; justify-content:center; align-items:center;
+            z-index:900; pointer-events:none;
+            opacity:0; transition:opacity 0.15s ease;
+        }
+        .reveal-overlay.active { opacity:1; }
+        .reveal-overlay.fade-out { opacity:0; transition:opacity 0.4s ease; }
+        .reveal-bg {
+            position:absolute; top:0; left:0; width:100%; height:100%;
+            background:radial-gradient(ellipse at center, rgba(255,107,53,0.25) 0%, rgba(0,0,0,0.85) 70%);
+        }
+        .reveal-category {
+            font-family:'Orbitron',sans-serif; font-size:clamp(0.9rem,2.5vw,1.4rem);
+            color:var(--neon-cyan); text-transform:uppercase; letter-spacing:0.3em;
+            margin-bottom:0.5rem; z-index:1;
+            opacity:0; transform:translateY(10px);
+        }
+        .reveal-overlay.active .reveal-category {
+            opacity:1; transform:translateY(0);
+            transition:all 0.2s ease 0.05s;
+        }
+        .reveal-name {
+            font-family:'Orbitron',sans-serif; font-size:clamp(2.5rem,8vw,5rem);
+            font-weight:900; text-transform:uppercase; letter-spacing:0.05em;
+            color:white; z-index:1; text-align:center; padding:0 1rem;
+            text-shadow: 0 0 30px var(--neon-orange), 0 0 60px var(--neon-orange), 0 0 100px rgba(255,107,53,0.5);
+            opacity:0; transform:scale(1.8);
+        }
+        .reveal-overlay.active .reveal-name {
+            opacity:1; transform:scale(1);
+            transition: opacity 0.25s ease 0.1s, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s;
+        }
+        .reveal-line {
+            width:0; height:3px; margin-top:1.5rem; z-index:1;
+            background:linear-gradient(90deg, transparent, var(--neon-orange), var(--neon-cyan), transparent);
+        }
+        .reveal-overlay.active .reveal-line {
+            width:min(80vw, 500px);
+            transition:width 0.4s ease 0.2s;
+        }
+
+        @media (max-width:768px) { .controls{flex-direction:column;align-items:center} .loadout-grid{grid-template-columns:1fr} .quickuse-grid{grid-template-columns:repeat(2,1fr)} }
+    </style>
+</head>
+<body>
+    <div class="bg-effects"><div class="grid-overlay"></div></div>
+    <header>
+        <h1 class="logo">ARC Raiders</h1>
+        <p class="subtitle">Loadout Spinner</p>
+    </header>
+    <div class="container">
+        <div class="controls">
+            <label class="chaos-toggle">
+                <input type="checkbox" id="chaosMode">
+                <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                <span class="chaos-label">Chaos Mode</span>
+            </label>
+            <div class="reroll-counter">
+                <span class="reroll-label">Rerolls:</span>
+                <div class="reroll-dots">
+                    <div class="reroll-dot active" id="dot1"></div>
+                    <div class="reroll-dot active" id="dot2"></div>
+                    <div class="reroll-dot active" id="dot3"></div>
+                </div>
+            </div>
+        </div>
+        <div class="spin-section">
+            <button class="spin-btn" id="spinBtn">SPIN</button>
+        </div>
+        <div class="current-category">
+            <div class="category-label" id="categoryLabel">WEAPON</div>
+        </div>
+        <div class="wheel-section">
+            <div class="wheel-container">
+                <div class="wheel-pointer"></div>
+                <div class="wheel-wrapper" id="wheelWrapper">
+                    <canvas class="wheel-canvas" id="wheelCanvas"></canvas>
+                </div>
+                <div class="wheel-center-dot">ARC</div>
+            </div>
+        </div>
+
+        <div class="loadout-section">
+            <h2 class="loadout-title">Your Loadout</h2>
+            <div style="text-align:center; margin-bottom:1.5rem; font-family:'Rajdhani',sans-serif; font-size:1rem; color:var(--text-secondary); letter-spacing:0.05em; font-style:italic;">⚕️ Choose your own medical items for each raid</div>
+            <div class="loadout-grid">
+                <div class="loadout-slot" id="weaponSlot"><div class="slot-label">Primary Weapon</div><div class="slot-value empty" id="weaponValue">---</div></div>
+                <div class="loadout-slot" id="augmentSlot"><div class="slot-label">Augment</div><div class="slot-value empty" id="augmentValue">---</div></div>
+                <div class="loadout-slot" id="shieldSlot"><div class="slot-label">Shield</div><div class="slot-value empty" id="shieldValue">---</div></div>
+                <div class="loadout-slot" id="mapSlot"><div class="slot-label">Map</div><div class="slot-value empty" id="mapValue">---</div></div>
+            </div>
+            <div class="loadout-slot" style="margin-top:1.5rem;" id="quickuseSlot">
+                <div class="slot-label">Quick-Use Slots</div>
+                <div class="quickuse-grid" id="quickuseGrid">
+                    <div class="quickuse-item empty">Slot 1</div>
+                    <div class="quickuse-item empty">Slot 2</div>
+                    <div class="quickuse-item empty">Slot 3</div>
+                    <div class="quickuse-item empty">Slot 4</div>
+                </div>
+            </div>
+            <div class="objectives-section">
+                <h3 class="objectives-title" id="objectivesTitle">Objective</h3>
+                <div class="objectives-list" id="objectivesList">
+                    <div class="objective-item" id="objective1">---</div>
+                    <div class="objective-item" id="objective2" style="display:none;">---</div>
+                    <div class="objective-item" id="objective3" style="display:none;">---</div>
+                </div>
+            </div>
+        </div>
+        <div class="reset-section"><button class="reset-btn" id="resetBtn">New Session</button></div>
+    </div>
+    <div class="final-warning" id="finalWarning"><div class="final-warning-text">THIRD AND FINAL!</div></div>
+    <div class="reveal-overlay" id="revealOverlay">
+        <div class="reveal-bg"></div>
+        <div class="reveal-category" id="revealCategory"></div>
+        <div class="reveal-name" id="revealName"></div>
+        <div class="reveal-line"></div>
+    </div>
+    <div class="audio-indicator" id="muteToggle">🔊 Sound On</div>
+
+    <script>
+    // =============================================
+    // GAME DATA
+    // =============================================
+    const GAME_DATA = {
+        weapons: {
+            assaultRifles: ['Kettle', 'Rattler', 'Arpeggio', 'Tempest', 'Bettina'],
+            battleRifles: ['Ferro', 'Renegade', 'Aphelion'],
+            smgs: ['Stitcher', 'Bobcat'],
+            shotguns: ['Il Toro', 'Vulcano'],
+            pistols: ['Hairpin', 'Burletta', 'Venator'],
+            handCannons: ['Anvil'],
+            lmgs: ['Torrente'],
+            sniperRifles: ['Osprey', 'Jupiter'],
+            special: ['Hullcracker', 'Equalizer']
+        },
+        augments: [
+            { name: 'Looting Mk. 1', shields: ['Light Shield'], quickSlots: 4 },
+            { name: 'Looting Mk. 2', shields: ['Light Shield'], quickSlots: 4 },
+            { name: 'Looting Mk. 3 (Cautious)', shields: ['Light Shield'], quickSlots: 5 },
+            { name: 'Looting Mk. 3 (Safekeeper)', shields: ['Light Shield', 'Medium Shield', 'Heavy Shield'], quickSlots: 4 },
+            { name: 'Looting Mk. 3 (Survivor)', shields: ['Light Shield', 'Medium Shield'], quickSlots: 5 },
+            { name: 'Combat Mk. 1', shields: ['Light Shield', 'Medium Shield'], quickSlots: 4 },
+            { name: 'Combat Mk. 2', shields: ['Light Shield', 'Medium Shield', 'Heavy Shield'], quickSlots: 4 },
+            { name: 'Combat Mk. 3 (Aggressive)', shields: ['Light Shield', 'Medium Shield', 'Heavy Shield'], quickSlots: 4 },
+            { name: 'Combat Mk. 3 (Flanking)', shields: ['Light Shield'], quickSlots: 5 },
+            { name: 'Tactical Mk. 1', shields: ['Light Shield', 'Medium Shield'], quickSlots: 5 },
+            { name: 'Tactical Mk. 2', shields: ['Light Shield', 'Medium Shield'], quickSlots: 5 },
+            { name: 'Tactical Mk. 3 (Defensive)', shields: ['Light Shield', 'Medium Shield', 'Heavy Shield'], quickSlots: 5 },
+            { name: 'Tactical Mk. 3 (Healing)', shields: ['Light Shield', 'Medium Shield'], quickSlots: 4 },
+            { name: 'Tactical Mk. 3 (Revival)', shields: ['Light Shield'], quickSlots: 5 }
+        ],
+        shields: ['Light Shield', 'Medium Shield', 'Heavy Shield'],
+        quickUse: {
+            healing: [],
+            grenades: ['Heavy Fuze Grenade','Light Impact Grenade','Shrapnel Grenade','Gas Grenade','Blaze Grenade','Smoke Grenade',"Li'l Smoke Grenade",'Showstopper','Seeker Grenade','Trailblazer','Wolfpack','Trigger Grenade','Hornet Driver'],
+            gadgets: ['Photoelectric Cloak','Snap Hook','Flame Spray','Noisemaker','Firecracker','Acoustic Guitar'],
+            utilities: ['Zipline','Barricade Kit','Door Blocker','Remote Raider Flare'],
+            traps: ['Explosive Mine','Gas Mine','Jolt Mine','Blaze Grenade Trap','Gas Grenade Trap','Deadline']
+        },
+        maps: ['Dam Battlegrounds','Buried City','The Spaceport','The Blue Gate','Stella Montis'],
+        objectives: {
+            easy: ['Loot 5 containers','Loot 10 containers','Kill 3 Wasps','Kill 3 Hornets','Kill 5 Ticks','Destroy 2 Turrets','Find and loot a Raider Cache','Use a Zipline during the raid','Craft something mid-raid','Breach an ARC Probe','Extract within 10 minutes','Loot a Security Locker','Find a blueprint','Kill 3 Pops before they explode','Destroy a Surveyor'],
+            medium: ['Kill a Sentinel','Kill a Leaper','Kill 2 Rocketeers','Kill a Snitch without it alerting others','Kill a Fireball','Extract with 10,000+ resources','Extract with an Epic weapon','Find and use a Photoelectric Cloak','Win a PvP fight','Kill 2 players','Down a player with a pistol','Extract with less than 25% health','Complete a quest objective','Survive an ARC swarm','Use 3 different grenade types','Loot 3 Husks','Destroy 2 Sentinels','Kill a Shredder'],
+            hard: ['Kill a Bastion','Kill a Bombardier','Kill 3 players','Kill 5 players','Solo kill a Rocketeer','Extract with a Legendary weapon','Win a 1v2 fight','Win a 1v3 fight','Kill a Bastion with only grenades','Kill a Rocketeer with only pistols','Extract after killing 3 different large ARCs','Complete the raid with no healing items used','Extract with full inventory'],
+            meme: ['Melee kills only (Raider Tool)','No guns allowed - grenades and melee only','No shields allowed','No healing items allowed','Must teabag every player you kill','Drop your best item before extracting','Only use items you find in-raid','No sprinting allowed','Must extract from the furthest extraction point','Cannot reload - drop gun when empty','Must announce yourself before attacking players','Play music through your mic the entire raid','Crouch walk only','Kill a Bastion with melee only','Dance emote after every ARC kill','Must say thank you out loud every time you pick up an item','Backwards only - cannot move forward','Must use proximity chat to compliment every player before fighting them','Can only heal while standing completely still in the open','Must swap weapons after every single kill','No looting dead players - containers and ground loot only','First weapon you find in-raid replaces your loadout weapon','No ARC kills - avoid all robots entirely','Must spin 360 before entering any building','Must apologize to every ARC you kill','Must commentate your own gameplay like a sports announcer','Mouse sensitivity doubled for the entire raid','Can only open your inventory while standing still in the open','If you hear gunshots you must run toward them','Cannot use the same door twice','Must teabag every ARC you kill']
+        },
+        arcEnemies: { small:['Tick','Pop','Fireball','Wasp','Hornet','Snitch'], medium:['Leaper','Sentinel','Turret','Surveyor','Shredder'], large:['Rocketeer','Bastion','Bombardier'], boss:['Matriarch','Queen'] }
+    };
+
+    function getAllWeapons() { return Object.values(GAME_DATA.weapons).flat(); }
+    function getAllAugmentNames() { return GAME_DATA.augments.map(a => a.name); }
+    function getShieldsForAugment(augmentName) {
+        const aug = GAME_DATA.augments.find(a => a.name === augmentName);
+        return aug ? aug.shields : GAME_DATA.shields;
+    }
+    function getQuickSlotsForAugment(augmentName) {
+        const aug = GAME_DATA.augments.find(a => a.name === augmentName);
+        return aug ? aug.quickSlots : 4;
+    }
+    function getAllQuickUse() { return Object.values(GAME_DATA.quickUse).flat(); }
+    function getAllObjectives() { return Object.values(GAME_DATA.objectives).flat(); }
+    function getRandomItem(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+    function shuffleArray(arr) {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+    }
+
+    // =============================================
+    // SPINNER LOGIC
+    // =============================================
+    class ArcSpinner {
+        constructor() {
+            this.spinsRemaining = 3;
+            this.currentSpin = 0;
+            this.isSpinning = false;
+            this.chaosMode = false;
+            this.wheelRotation = 0;
+            this.audioContext = null;
+            this.muted = false;
+            this.currentLoadout = { weapon:null, augment:null, shield:null, quickUse:[], map:null, objectives:[] };
+            this.segmentColors = [
+                '#ff6b35','#c92778','#00c4cc','#d4b02e',
+                '#2ecc40','#8e44ad','#d63031','#2e86de',
+                '#e17055','#a855f7','#00b894','#fd79a8',
+                '#0984e3','#fdcb6e','#6c5ce7','#e84393',
+                '#00cec9','#fab1a0','#55efc4','#74b9ff',
+                '#ff7675'
+            ];
+        }
+
+        init() {
+            this.spinBtn = document.getElementById('spinBtn');
+            this.resetBtn = document.getElementById('resetBtn');
+            this.chaosToggle = document.getElementById('chaosMode');
+            this.wheelWrapper = document.getElementById('wheelWrapper');
+            this.canvas = document.getElementById('wheelCanvas');
+            this.ctx = this.canvas.getContext('2d');
+            this.categoryLabel = document.getElementById('categoryLabel');
+            this.finalWarning = document.getElementById('finalWarning');
+            this.dots = [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')];
+            this.slots = { weapon:document.getElementById('weaponValue'), augment:document.getElementById('augmentValue'), shield:document.getElementById('shieldValue'), map:document.getElementById('mapValue') };
+            this.quickuseGrid = document.getElementById('quickuseGrid');
+            this.objectivesTitle = document.getElementById('objectivesTitle');
+
+            // Size the canvas at 2x for retina sharpness
+            this.canvasSize = 900;
+            this.canvas.width = this.canvasSize;
+            this.canvas.height = this.canvasSize;
+
+            this.spinSequence = [
+                { key:'weapon', label:'PRIMARY WEAPON', items:getAllWeapons() },
+                { key:'augment', label:'AUGMENT', items:getAllAugmentNames() },
+                { key:'shield', label:'SHIELD', items:null }, // determined after augment
+                // quick-use slots inserted dynamically after augment is resolved
+                { key:'map', label:'MAP', items:GAME_DATA.maps }
+            ];
+
+            this.spinBtn.onclick = () => this.startFullSpin();
+            this.resetBtn.onclick = () => this.resetSession();
+            this.chaosToggle.onchange = (e) => { this.chaosMode = e.target.checked; this.updateObjectivesDisplay(); };
+
+            this.buildWheel(getAllWeapons());
+            this.updateObjectivesDisplay();
+
+            this.muteToggle = document.getElementById('muteToggle');
+            this.muteToggle.onclick = () => {
+                this.muted = !this.muted;
+                this.muteToggle.textContent = this.muted ? '🔇 Sound Off' : '🔊 Sound On';
+                this.muteToggle.style.borderColor = this.muted ? 'rgba(255,255,255,0.1)' : '';
+            };
+
+            document.body.addEventListener('click', () => {
+                if (!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }, { once: true });
+            console.log('ArcSpinner initialized!');
+        }
+
+        buildWheel(items) {
+            const ctx = this.ctx;
+            const size = this.canvasSize;
+            const cx = size / 2;
+            const cy = size / 2;
+            const radius = size / 2 - 4;
+            const segCount = items.length;
+            const segAngle = (Math.PI * 2) / segCount;
+
+            ctx.clearRect(0, 0, size, size);
+
+            for (let i = 0; i < segCount; i++) {
+                // Wedge 0 centered at top (12 o'clock)
+                const startAngle = i * segAngle - Math.PI / 2 - segAngle / 2;
+                const endAngle = startAngle + segAngle;
+
+                // Fill wedge with alternating colors
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, radius, startAngle, endAngle);
+                ctx.closePath();
+                ctx.fillStyle = this.segmentColors[i % this.segmentColors.length];
+                ctx.fill();
+
+                // Divider lines (skip for very large counts to avoid visual noise)
+                if (segCount <= 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(cx + Math.cos(startAngle) * radius, cy + Math.sin(startAngle) * radius);
+                    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+                    ctx.lineWidth = segCount <= 15 ? 3 : 1.5;
+                    ctx.stroke();
+                }
+
+                // Draw label along the radius
+                const midAngle = startAngle + segAngle / 2;
+                const itemText = items[i];
+
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(midAngle);
+
+                // Scale font to segment count
+                let fontSize, maxChars, textRadius;
+                if (segCount <= 5) {
+                    fontSize = 30; maxChars = 22; textRadius = radius * 0.55;
+                } else if (segCount <= 10) {
+                    fontSize = 24; maxChars = 18; textRadius = radius * 0.58;
+                } else if (segCount <= 21) {
+                    fontSize = 16; maxChars = 16; textRadius = radius * 0.60;
+                } else if (segCount <= 45) {
+                    fontSize = 11; maxChars = 14; textRadius = radius * 0.62;
+                } else {
+                    fontSize = 8; maxChars = 12; textRadius = radius * 0.64;
+                }
+
+                ctx.font = `bold ${fontSize}px 'Orbitron', 'Rajdhani', sans-serif`;
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(0,0,0,0.95)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+
+                // Center text between the center dot edge and the outer rim
+                const innerEdge = 50;
+                const outerEdge = radius - 12;
+                const textPos = (innerEdge + outerEdge) / 2;
+                const displayText = itemText.length > maxChars ? itemText.substring(0, maxChars - 1) + '…' : itemText;
+                ctx.fillText(displayText, textPos, 0);
+
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+
+            // Outer ring
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 6;
+            ctx.stroke();
+
+            // Inner circle mask behind center dot
+            ctx.beginPath();
+            ctx.arc(cx, cy, 42, 0, Math.PI * 2);
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fill();
+
+            this.currentWheelItems = items;
+            this.currentSegCount = segCount;
+        }
+
+        getWheelResult() {
+            const segCount = this.currentSegCount;
+            const segAngle = 360 / segCount;
+            // Pointer is at 12 o'clock. Wedge 0 is centered at 12 o'clock.
+            // Wheel rotated clockwise by wheelRotation degrees.
+            const normalized = (((-this.wheelRotation) % 360) + 360) % 360;
+            const shifted = (normalized + segAngle / 2) % 360;
+            const index = Math.floor(shifted / segAngle);
+            return this.currentWheelItems[index % this.currentWheelItems.length];
+        }
+
+        rebuildQuickUseGrid(slotCount) {
+            const grid = this.quickuseGrid;
+            grid.innerHTML = '';
+            // Adjust grid columns: 4 columns for 4 slots, 5 for 5
+            grid.style.gridTemplateColumns = `repeat(${slotCount}, 1fr)`;
+            for (let i = 0; i < slotCount; i++) {
+                const div = document.createElement('div');
+                div.className = 'quickuse-item empty';
+                div.textContent = `Slot ${i + 1}`;
+                grid.appendChild(div);
+            }
+        }
+
+        buildFullSequence(quickSlotCount) {
+            const seq = [
+                { key:'weapon', label:'PRIMARY WEAPON', items:shuffleArray(getAllWeapons()) },
+                { key:'augment', label:'AUGMENT', items:shuffleArray(getAllAugmentNames()) },
+                { key:'shield', label:'SHIELD', items:null }
+            ];
+            for (let i = 1; i <= quickSlotCount; i++) {
+                seq.push({ key:`quickUse${i}`, label:`QUICK-USE SLOT ${i}`, items:shuffleArray(getAllQuickUse()) });
+            }
+            seq.push({ key:'map', label:'MAP', items:shuffleArray(GAME_DATA.maps) });
+            return seq;
+        }
+
+        async startFullSpin() {
+            if (this.isSpinning || this.spinsRemaining <= 0) return;
+            this.isSpinning = true;
+            this.spinBtn.disabled = true;
+            this.spinBtn.classList.add('spinning');
+            this.spinBtn.textContent = 'SPINNING...';
+
+            if (this.spinsRemaining === 1) {
+                this.finalWarning.classList.add('show');
+                await this.delay(2000);
+                this.finalWarning.classList.remove('show');
+            }
+
+            this.resetLoadoutDisplay();
+            this.currentLoadout = { weapon:null, augment:null, shield:null, quickUse:[], map:null, objectives:[] };
+            this.canvas.classList.add('spinning');
+
+            // Start with base sequence (weapon, augment, shield, map)
+            // Quick-use slots get injected after augment resolves
+            let sequence = this.buildFullSequence(4); // default 4, rebuilt after augment
+
+            for (let i = 0; i < sequence.length; i++) {
+                const category = sequence[i];
+
+                // After augment is resolved, rebuild sequence with correct quick-use count
+                if (category.key === 'augment') {
+                    // Spin augment first
+                    this.categoryLabel.textContent = category.label;
+                    this.categoryLabel.classList.add('visible');
+                    this.buildWheel(category.items);
+                    this.playDrumroll();
+                    const spins = 5 + Math.random() * 3;
+                    const extra = Math.random() * 360;
+                    this.wheelRotation += (spins * 360) + extra;
+                    this.wheelWrapper.style.transition = 'transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+                    this.wheelWrapper.style.transform = `rotate(${this.wheelRotation}deg)`;
+                    await this.delay(3000);
+                    const augResult = this.getWheelResult();
+                    this.playRevealSound();
+                    await this.showReveal(category.label, augResult);
+                    this.updateSlot('augment', augResult);
+                    this.categoryLabel.classList.remove('visible');
+                    await this.delay(300);
+
+                    // Now rebuild the sequence with the correct quick-use slot count
+                    const quickSlotCount = getQuickSlotsForAugment(augResult);
+                    sequence = this.buildFullSequence(quickSlotCount);
+                    this.rebuildQuickUseGrid(quickSlotCount);
+
+                    // Show a brief note if 5 slots
+                    if (quickSlotCount === 5) {
+                        this.categoryLabel.textContent = '5 QUICK-USE SLOTS';
+                        this.categoryLabel.classList.add('visible');
+                        await this.delay(1000);
+                        this.categoryLabel.classList.remove('visible');
+                        await this.delay(300);
+                    }
+
+                    continue; // augment already handled
+                }
+
+                // Resolve shield items based on augment result
+                if (category.key === 'shield') {
+                    const allowedShields = shuffleArray(getShieldsForAugment(this.currentLoadout.augment));
+                    category.items = allowedShields;
+                    // If only one option, auto-assign without spinning
+                    if (allowedShields.length === 1) {
+                        this.categoryLabel.textContent = 'SHIELD (LOCKED)';
+                        this.categoryLabel.classList.add('visible');
+                        this.buildWheel(allowedShields);
+                        await this.delay(800);
+                        this.playRevealSound();
+                        await this.showReveal('SHIELD (LOCKED)', allowedShields[0]);
+                        this.updateSlot('shield', allowedShields[0]);
+                        this.categoryLabel.classList.remove('visible');
+                        await this.delay(300);
+                        continue;
+                    }
+                }
+
+                this.categoryLabel.textContent = category.label;
+                this.categoryLabel.classList.add('visible');
+                this.buildWheel(category.items);
+                this.playDrumroll();
+
+                const spins = 5 + Math.random() * 3;
+                const extra = Math.random() * 360;
+                this.wheelRotation += (spins * 360) + extra;
+                this.wheelWrapper.style.transition = 'transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+                this.wheelWrapper.style.transform = `rotate(${this.wheelRotation}deg)`;
+                await this.delay(3000);
+
+                const result = this.getWheelResult();
+                this.playRevealSound();
+                await this.showReveal(category.label, result);
+                this.updateSlot(category.key, result);
+                this.categoryLabel.classList.remove('visible');
+                await this.delay(300);
+            }
+
+            await this.spinObjectives();
+            this.spinsRemaining--;
+            this.currentSpin++;
+            this.updateRerollDots();
+            this.isSpinning = false;
+            this.spinBtn.classList.remove('spinning');
+            this.canvas.classList.remove('spinning');
+            document.querySelector('.loadout-section').classList.add('complete');
+            if (this.spinsRemaining > 0) { this.spinBtn.disabled = false; this.spinBtn.textContent = `REROLL (${this.spinsRemaining} left)`; }
+            else { this.spinBtn.textContent = 'NO SPINS LEFT'; }
+            this.playFanfare();
+        }
+
+        async spinObjectives() {
+            const count = this.chaosMode ? 3 : 1;
+            const all = shuffleArray(getAllObjectives());
+            this.categoryLabel.textContent = this.chaosMode ? 'CHAOS OBJECTIVES' : 'OBJECTIVE';
+            this.categoryLabel.classList.add('visible');
+            this.buildWheel(all);
+            for (let i = 0; i < count; i++) {
+                if (i > 0) await this.delay(500);
+                this.playDrumroll();
+                const spins = 4 + Math.random() * 2;
+                this.wheelRotation += (spins * 360) + Math.random() * 360;
+                this.wheelWrapper.style.transition = 'transform 2.5s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+                this.wheelWrapper.style.transform = `rotate(${this.wheelRotation}deg)`;
+                await this.delay(2500);
+                const obj = this.getWheelResult();
+                this.currentLoadout.objectives.push(obj);
+                this.playRevealSound();
+                const objLabel = this.chaosMode ? `CHAOS OBJECTIVE ${i+1}` : 'OBJECTIVE';
+                await this.showReveal(objLabel, obj);
+                const el = document.getElementById(`objective${i+1}`);
+                if (el) { el.textContent = obj; el.style.display = 'block'; setTimeout(() => el.classList.add('revealed'), 50); }
+            }
+            this.categoryLabel.classList.remove('visible');
+        }
+
+        updateSlot(key, value) {
+            if (['weapon','augment','shield','map'].includes(key)) {
+                const slot = this.slots[key];
+                if (slot) {
+                    slot.textContent = value;
+                    slot.classList.remove('empty');
+                    slot.classList.add('flash');
+                    slot.parentElement.classList.add('revealed');
+                    setTimeout(() => slot.classList.remove('flash'), 400);
+                }
+                this.currentLoadout[key] = value;
+            } else if (key.startsWith('quickUse')) {
+                const idx = parseInt(key.replace('quickUse','')) - 1;
+                const items = this.quickuseGrid.querySelectorAll('.quickuse-item');
+                if (items[idx]) {
+                    items[idx].textContent = value.length > 18 ? value.substring(0,17)+'…' : value;
+                    items[idx].classList.remove('empty');
+                    items[idx].classList.add('revealed');
+                }
+                this.currentLoadout.quickUse[idx] = value;
+            }
+        }
+
+        resetLoadoutDisplay() {
+            Object.keys(this.slots).forEach(k => { const s=this.slots[k]; s.textContent='---'; s.classList.add('empty'); s.classList.remove('flash'); s.parentElement.classList.remove('revealed'); });
+            this.rebuildQuickUseGrid(4); // reset to default 4 slots
+            for (let i=1;i<=3;i++) { const o=document.getElementById(`objective${i}`); if(o){o.textContent='---';o.classList.remove('revealed');} }
+            document.querySelector('.loadout-section').classList.remove('complete');
+        }
+
+        updateObjectivesDisplay() {
+            const o2=document.getElementById('objective2'), o3=document.getElementById('objective3');
+            if (this.chaosMode) { this.objectivesTitle.textContent='CHAOS OBJECTIVES (x3)'; if(o2)o2.style.display='block'; if(o3)o3.style.display='block'; }
+            else { this.objectivesTitle.textContent='OBJECTIVE'; if(o2)o2.style.display='none'; if(o3)o3.style.display='none'; }
+        }
+
+        updateRerollDots() { this.dots.forEach((d,i)=>{ if(i<3-this.spinsRemaining){d.classList.remove('active');d.classList.add('used');} }); }
+
+        resetSession() {
+            this.spinsRemaining=3; this.currentSpin=0; this.wheelRotation=0;
+            this.dots.forEach(d=>{d.classList.add('active');d.classList.remove('used');});
+            this.spinBtn.disabled=false; this.spinBtn.textContent='SPIN';
+            this.resetLoadoutDisplay();
+            this.wheelWrapper.style.transition='none';
+            this.wheelWrapper.style.transform='rotate(0deg)';
+            setTimeout(()=>{ this.wheelWrapper.style.transition='transform 3s cubic-bezier(0.17,0.67,0.12,0.99)'; },50);
+            this.buildWheel(getAllWeapons());
+        }
+
+        delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+        async showReveal(categoryLabel, resultName) {
+            const overlay = document.getElementById('revealOverlay');
+            const catEl = document.getElementById('revealCategory');
+            const nameEl = document.getElementById('revealName');
+
+            catEl.textContent = categoryLabel;
+            nameEl.textContent = resultName;
+
+            // Reset classes
+            overlay.classList.remove('active', 'fade-out');
+            void overlay.offsetWidth; // force reflow
+
+            // Play a punchy reveal sound
+            this.playBigReveal();
+
+            // Slam in
+            overlay.classList.add('active');
+            await this.delay(1400);
+
+            // Fade out
+            overlay.classList.add('fade-out');
+            await this.delay(400);
+            overlay.classList.remove('active', 'fade-out');
+        }
+
+        playBigReveal() {
+            if (!this.audioContext || this.muted) return;
+            const ctx = this.audioContext;
+            const now = ctx.currentTime;
+
+            // Impact hit
+            const noise = ctx.createBufferSource();
+            const buf = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 3);
+            noise.buffer = buf;
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.setValueAtTime(0.3, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            noise.connect(noiseGain);
+            noiseGain.connect(ctx.destination);
+            noise.start(now);
+
+            // Rising tone
+            const osc = ctx.createOscillator();
+            const oscGain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.exponentialRampToValueAtTime(900, now + 0.12);
+            osc.frequency.setValueAtTime(900, now + 0.12);
+            oscGain.gain.setValueAtTime(0.2, now);
+            oscGain.gain.setValueAtTime(0.2, now + 0.12);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+            osc.connect(oscGain);
+            oscGain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.5);
+
+            // Shimmer chord
+            [800, 1200, 1600].forEach(f => {
+                const o = ctx.createOscillator();
+                const g = ctx.createGain();
+                o.type = 'sine';
+                o.frequency.value = f;
+                g.gain.setValueAtTime(0.08, now + 0.08);
+                g.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                o.connect(g);
+                g.connect(ctx.destination);
+                o.start(now + 0.08);
+                o.stop(now + 0.6);
+            });
+        }
+
+        // Audio
+        playDrumroll() {
+            if(!this.audioContext || this.muted) return;
+            const now=this.audioContext.currentTime;
+            for(let i=0;i<30;i++){ const t=now+(i*0.1*Math.pow(0.95,i)); if(t>now+3)break; const o=this.audioContext.createOscillator(),g=this.audioContext.createGain(); o.type='triangle'; o.frequency.value=100+Math.random()*50; g.gain.setValueAtTime(0.1,t); g.gain.exponentialRampToValueAtTime(0.01,t+0.08); o.connect(g); g.connect(this.audioContext.destination); o.start(t); o.stop(t+0.08); }
+        }
+        playRevealSound() {
+            if(!this.audioContext || this.muted) return;
+            const now=this.audioContext.currentTime, o=this.audioContext.createOscillator(), g=this.audioContext.createGain();
+            o.type='sine'; o.frequency.setValueAtTime(400,now); o.frequency.exponentialRampToValueAtTime(800,now+0.15);
+            g.gain.setValueAtTime(0.2,now); g.gain.exponentialRampToValueAtTime(0.01,now+0.2);
+            o.connect(g); g.connect(this.audioContext.destination); o.start(now); o.stop(now+0.2);
+        }
+        playFanfare() {
+            if(!this.audioContext || this.muted) return;
+            const now=this.audioContext.currentTime;
+            [523.25,659.25,783.99,1046.50].forEach((f,i)=>{ const o=this.audioContext.createOscillator(),g=this.audioContext.createGain(); o.type='triangle'; o.frequency.value=f; g.gain.setValueAtTime(0.15,now+i*0.1); g.gain.exponentialRampToValueAtTime(0.01,now+i*0.1+0.4); o.connect(g); g.connect(this.audioContext.destination); o.start(now+i*0.1); o.stop(now+i*0.1+0.4); });
+        }
+    }
+
+    let arcSpinner;
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing...');
+        if (typeof GAME_DATA !== 'undefined') {
+            arcSpinner = new ArcSpinner();
+            arcSpinner.init();
+        } else { console.error('GAME_DATA not found!'); }
+    });
+    </script>
+</body>
+</html>
